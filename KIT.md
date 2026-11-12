@@ -4,7 +4,7 @@ Every screen is built from these components, so every Horizon app looks properly
 
 Import them from `@/kit`, never from `@/kit/ui` or anywhere else: `import { AppShell, Button, List, Row } from "@/kit"`. Icons come from Lucide: `import { Store } from "lucide-react"`. `src/kit/` is fixed: don't change it.
 
-Don't style colours, borders, shadows or corners yourself: the kit does that. Use Tailwind only for layout and spacing (`flex`, `grid`, `gap-4`, `md:grid-cols-3`) and plain text sizes. Never write your own buttons, cards, tags, fields or navigation.
+The look is black, white and grey, and colour only ever means something: a tag's dot (urgent, running low, done) or a message. Don't style colours, borders, shadows or corners yourself: the kit does that. Use Tailwind only for layout and spacing (`flex`, `grid`, `gap-4`, `md:grid-cols-3`) and plain text sizes. Never write your own buttons, cards, tags, fields or navigation.
 
 ## The app
 
@@ -12,7 +12,7 @@ Make one `AppShell` component of your own in `src/components/` (with the app's n
 
 ```tsx
 <AppShell
-  name="Food bank needs" icon={HandHeart} tone="orange"
+  name="Food bank needs" icon={HandHeart}
   current="needs"
   tabs={[
     { id: "needs", label: "What's needed", href: "/", icon: HandHeart },
@@ -30,7 +30,7 @@ A sidebar on a computer, a tab bar at the bottom on a phone. Add `nav="top"` for
 ## A screen
 
 ```tsx
-<ScreenHeader icon={Store} tone="indigo" title="Food banks" description="Follow the food banks you give to." action={<Button variant="primary" href="/food-banks/new">Add a food bank</Button>} />
+<ScreenHeader icon={Store} title="Food banks" description="Follow the food banks you give to." action={<Button variant="primary" href="/food-banks/new">Add a food bank</Button>} />
 <ScreenHeader back={{ label: "All food banks", href: "/food-banks" }} icon={Store} title={bank.name} description="Riverside · updated today" />
 ```
 
@@ -44,12 +44,12 @@ A sidebar on a computer, a tab bar at the bottom on a phone. Add `nav="top"` for
     <Row
       key={bank.id}
       href={`/food-banks/${bank.id}`}
-      media={<Tile icon={Store} tone="indigo" />}
+      media={<Tile icon={Store} />}
       title={bank.name}
       description="Riverside · updated today"
       actions={<FollowButton bankId={bank.id} />}
     >
-      <Tag tone="urgent" dot>2 urgent</Tag>
+      <Tag tone="urgent">2 urgent</Tag>
     </Row>
   ))}
 </List>
@@ -77,10 +77,10 @@ In a client component they can be controlled instead, with `value` and `onChange
 ## Pieces
 
 - `Button`: `variant` primary (one per screen, the main action), secondary, outline (default), ghost, danger, link; `size` md, sm, icon, icon-sm (icon buttons need `aria-label`). `href` makes it a link to another page. Put a Lucide icon before the words when it helps.
-- `Tile icon={…} tone="…"`: a picture for a thing. `tone`: primary, orange, amber, green, teal, sky, indigo, violet, pink, red, neutral. `size`: sm, md, lg. Give each kind of thing its own icon and tone, the same everywhere.
-- `Tag tone="…"`: a state. `tone`: neutral, primary, urgent, warning, good, info; `dot` adds a small dot, `icon` a Lucide icon.
+- `Tile icon={…}`: a picture for a thing, a grey Lucide icon on a quiet white tile. `size`: sm, md, lg. Give each kind of thing its own icon, the same everywhere.
+- `Tag tone="…"`: a state, with a small coloured dot for its meaning. `tone`: neutral (default), primary, urgent (red), warning (amber), good (green), info (blue); `icon` adds a Lucide icon.
 - `Card title description action footer`: a box for a few related things, or a form.
-- `Stat label value icon tone hint`: a big number for a summary, three to a row: `<div className="grid grid-cols-3 gap-2 sm:gap-3">`.
+- `Stat label value icon hint`: a big number for a summary, three to a row: `<div className="grid grid-cols-3 gap-2 sm:gap-3">`.
 - `Field`, `TextArea`, `Select`, `Segmented`: see Forms. `Select` and `Segmented` take `options={[{ value, label }]}`, never with an empty value: use `"all"`, not `""`, for "everything". Without a visible label, give them `ariaLabel`.
 - `FormMessage error message`: what a form's server action said, under the form.
 - `EmptyState icon title description action`: when there's nothing yet. Always say what to do next.
