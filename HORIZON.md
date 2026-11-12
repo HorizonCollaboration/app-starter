@@ -16,7 +16,7 @@ Read this before changing anything, whether you're a person or an AI.
 - `src/app/`: pages and server actions. One folder per screen.
 - `src/components/`: pieces of screens, as `PascalCase.tsx`.
 - `src/lib/data/`: everything that reads or writes the database, as functions that take the database as their first argument (`listTasks(db, userId)`), so tests can pass the test database.
-- `src/db/schema.ts`: the app's tables, below the sign-in tables.
+- `src/db/schema.ts`: the app's tables. Each person is a row in `user`, which it shares from the sign-in tables.
 - `drizzle/`: database changes. Run `npm run db:generate` after changing the schema; never edit a file that's already there.
 - `src/sampleData.ts`: made-up data the app can start with.
 - `tests/`: a test for each main job the app does, using `testDatabase()` from `tests/db.ts`.
@@ -39,14 +39,15 @@ Read this before changing anything, whether you're a person or an AI.
 Horizon keeps these the same in every app, and rejects a version that changes them:
 
 - `.github/`, `next.config.ts`, `drizzle.config.ts`, `eslint.config.mjs`, `tsconfig.json`, `vitest.config.mts`, `package.json`'s packages, `scripts/`
-- `src/db/index.ts`, `src/lib/auth.ts`, `src/lib/session.ts`, `src/lib/email.ts`, `src/app/api/auth/`, `src/app/sign-in/`
+- `src/db/index.ts`, `src/db/auth-schema.ts` (the secret sign-in tables), `src/lib/auth.ts`, `src/lib/session.ts`, `src/lib/email.ts`, `src/app/api/auth/`, `src/app/sign-in/`
+- `src/proxy.ts`, `src/middleware.ts` and `src/instrumentation*.ts`, which a Horizon app doesn't have
 - `src/app/layout.tsx`, `src/app/globals.css`, `src/theme.css`, `src/components/Banner.tsx`, `src/horizon.json`
 - `tests/db.ts`, `tests/sign-in.test.ts`, `HORIZON.md`, `LICENSE`
 - Any file already in `drizzle/` (add new ones with `npm run db:generate`)
 
 ## Checks
 
-`npm run check` runs the linter, the type check and the tests; `npm run build` must pass too. GitHub runs both on every change.
+`npm run check` runs the linter, the type check and the tests; `npm run build` must pass too. GitHub runs both on every change. The linter enforces several of the rules above: it rejects reaching other websites, reading settings, Node's system modules, dynamic imports and the sign-in tables.
 
 ## Running it yourself
 
