@@ -25,9 +25,42 @@ const fixedFiles = [
 
 const outside = "Horizon apps can't reach other websites; only src/lib/email.ts sends email.";
 
+const importRules = [
+  { group: ["node:*", "child_process", "fs", "fs/*", "net", "http", "https", "http2", "dgram", "dns", "tls", "vm", "worker_threads", "cluster", "os", "process"], message: "Horizon apps don't use Node's system modules." },
+  { group: ["**/auth-schema", "@/db/auth-schema"], message: "Sessions, sign-in links and accounts are secret: use requireUser() from @/lib/session." },
+  { group: ["**/prototype/**", "**/prototype"], message: "prototype/ is for reference only: copy what you need into src/." },
+  { group: ["@/lib/email"], message: "Only sign-in sends email." },
+  { group: ["@/lib/auth", "**/lib/auth"], message: "Use currentUser() or requireUser() from @/lib/session, which check the person may still use the app." },
+];
+
+const syntaxRules = [
+  { selector: "ImportExpression", message: "Use a normal import at the top of the file." },
+  { selector: "NewExpression[callee.name='Function']", message: "Don't run code from text." },
+  { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: "Don't put unchecked HTML on the page." },
+  { selector: "Literal[value=/^(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/i]", message: outside },
+  { selector: "TemplateElement[value.raw=/(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/i]", message: outside },
+];
+
+// Every screen is built from Horizon's kit (KIT.md), which owns the colours, so the look can change without rewriting the app.
+const kit = "Build screens from Horizon's kit (import from @/kit, see KIT.md): it sets the colours.";
+const colour =
+  "(?:^|[\\s:'\"`])-?(?:bg|text|border|ring|outline|fill|stroke|divide|decoration|accent|caret|placeholder|shadow|inset-shadow|drop-shadow|from|via|to)-(?:(?:slate|gray|zinc|neutral|stone|mauve|olive|mist|taupe|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\\d|white\\b|black\\b|\\[(?:#|rgb|hsl|oklch|oklab|lab|lch|color|var\\(|[a-z]+\\]))";
+const kitImportRules = [
+  { group: ["@/kit/*", "**/kit/ui", "**/kit/ui/*", "radix-ui", "@radix-ui/*", "class-variance-authority", "cn"], message: kit },
+];
+const kitSyntaxRules = [
+  { selector: "JSXAttribute[name.name='style']", message: kit },
+  { selector: `Literal[value=/${colour}/]`, message: kit },
+  { selector: `TemplateElement[value.raw=/${colour}/]`, message: kit },
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    // The rules can't be switched off from inside a file.
+    linterOptions: { noInlineConfig: true },
+  },
   {
     files: appCode,
     rules: {
@@ -44,26 +77,17 @@ const eslintConfig = defineConfig([
         { name: "process", message: "Settings and secrets are read only by Horizon's fixed files." },
         { name: "require", message: "Use import." },
       ],
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            { group: ["node:*", "child_process", "fs", "fs/*", "net", "http", "https", "http2", "dgram", "dns", "tls", "vm", "worker_threads", "cluster", "os", "process"], message: "Horizon apps don't use Node's system modules." },
-            { group: ["**/auth-schema", "@/db/auth-schema"], message: "Sessions, sign-in links and accounts are secret: use requireUser() from @/lib/session." },
-            { group: ["**/prototype/**", "**/prototype"], message: "prototype/ is for reference only: copy what you need into src/." },
-            { group: ["@/lib/email"], message: "Only sign-in sends email." },
-            { group: ["@/lib/auth", "**/lib/auth"], message: "Use currentUser() or requireUser() from @/lib/session, which check the person may still use the app." },
-          ],
-        },
-      ],
-      "no-restricted-syntax": [
-        "error",
-        { selector: "ImportExpression", message: "Use a normal import at the top of the file." },
-        { selector: "NewExpression[callee.name='Function']", message: "Don't run code from text." },
-        { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: "Don't put unchecked HTML on the page." },
-        { selector: "Literal[value=/^(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/i]", message: outside },
-        { selector: "TemplateElement[value.raw=/(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/i]", message: outside },
-      ],
+      "no-restricted-imports": ["error", { patterns: importRules }],
+      "no-restricted-syntax": ["error", ...syntaxRules],
+    },
+  },
+  {
+    // The app's own screens, outside the kit: built from the kit, never from the library under it or by hand.
+    files: appCode,
+    ignores: ["src/kit/**"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [...importRules, ...kitImportRules] }],
+      "no-restricted-syntax": ["error", ...syntaxRules, ...kitSyntaxRules],
     },
   },
   {

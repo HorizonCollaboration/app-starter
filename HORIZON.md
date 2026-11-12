@@ -6,7 +6,7 @@ Read this before changing anything, whether you're a person or an AI.
 
 ## What it's made of
 
-- **Next.js** (App Router) with **React** and **Tailwind**, styled with Horizon's theme.
+- **Next.js** (App Router) with **React** and **Tailwind**, built from **Horizon's kit** (`src/kit`, on shadcn/ui), described in `KIT.md`.
 - **Postgres** through **Drizzle**. Laravel Cloud provides the database as `DATABASE_URL`.
 - **Sign-in by emailed link** (better-auth). There are no passwords. Horizon says who may sign in: anyone, or only its community's members.
 - **Tests** with Vitest, against an in-memory Postgres (PGlite), so they need no database server.
@@ -31,7 +31,7 @@ Read this before changing anything, whether you're a person or an AI.
 6. **No secrets in the code.** Settings come from environment variables that Horizon or Laravel Cloud sets.
 7. **Made-up data only.** Sample data is realistic for the problem and clearly made up: no real people, contact details, addresses or record numbers.
 8. **No sensitive personal information.** Everyone agrees not to add it when they sign in, so never ask for it: no patient details, health records or anything like them.
-9. **Follow the style.** `DESIGN.md` is this app's style guide (layout, picture tiles, rows, buttons, tags): follow it. Colours and shapes come from `src/theme.css` as Tailwind classes like `bg-surface`, `text-ink`, `bg-primary`, `bg-peach-soft` and `rounded-card`, never Tailwind's own colours like `blue-500` or values in square brackets.
+9. **Build every screen from Horizon's kit.** `KIT.md` describes it and `DESIGN.md` is this app's style: follow both. Import from `@/kit` only; never write your own buttons, cards, tags, fields or navigation, and don't style colours, borders, shadows or corners (no Tailwind colours like `blue-500`, no values in square brackets).
 10. **Works on a phone.** Nothing scrolls sideways on a 375px screen, tap targets are at least 44px (`min-h-11`), and every input has a label.
 11. **Plain words.** Everyday British English. Buttons say what they do, and empty screens say what to do next.
 
@@ -44,6 +44,7 @@ Horizon keeps these the same in every app, and rejects a version that changes th
 - `src/proxy.ts`, which keeps a members-only app behind sign-in, and `src/middleware.ts` and `src/instrumentation*.ts`, which a Horizon app doesn't have
 - `src/app/template.*`, `not-found.*`, `loading.*`, `error.*`, `global-error.*`, `default.*`, `forbidden.*`, `unauthorized.*` and `@` folders at the top of `src/app/`, which the open sign-in page would show too: an app doesn't add them
 - `src/app/layout.tsx`, `src/app/globals.css`, `src/theme.css`, `src/components/Banner.tsx`, `src/horizon.json`
+- `src/kit/` (Horizon's kit), `KIT.md`, `components.json`
 - `tests/db.ts`, `tests/sign-in.test.ts`, `tests/access.test.ts`, `HORIZON.md`, `LICENSE`
 - Any file already in `drizzle/` (add new ones with `npm run db:generate`)
 
