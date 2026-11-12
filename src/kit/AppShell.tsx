@@ -154,7 +154,12 @@ export function AppShell({ name, icon, tone = "orange", nav = "side", tabs = [],
                   {tab.icon && <tab.icon className="size-5" strokeWidth={current === tab.id ? 2.25 : 1.75} aria-hidden="true" />}
                   {tab.label}
                   {Boolean(tab.count) && (
-                    <span className="absolute top-2 left-[calc(50%+6px)] min-w-4 rounded-full bg-primary px-1 text-[10px] leading-4 font-semibold text-primary-foreground tabular-nums">
+                    <span
+                      className={cn(
+                        "absolute top-2 left-[calc(50%+6px)] min-w-4 rounded-full px-1 text-[10px] leading-4 font-semibold text-white tabular-nums",
+                        tab.countTone === "urgent" ? "bg-red-600" : "bg-primary",
+                      )}
+                    >
                       {tab.count}
                     </span>
                   )}

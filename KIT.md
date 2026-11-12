@@ -78,7 +78,7 @@ In a client component they can be controlled instead, with `value` and `onChange
 
 - `Button`: `variant` primary (one per screen, the main action), secondary, outline (default), ghost, danger, link; `size` md, sm, icon, icon-sm (icon buttons need `aria-label`). `href` makes it a link to another page. Put a Lucide icon before the words when it helps.
 - `Tile icon={…}`: a picture for a thing, a grey Lucide icon on a quiet white tile. `size`: sm, md, lg. Give each kind of thing its own icon, the same everywhere.
-- `Tag tone="…"`: a state, with a small coloured dot for its meaning. `tone`: neutral (default), primary, urgent (red), warning (amber), good (green), info (blue); `icon` adds a Lucide icon.
+- `Tag tone="…"`: a state, with a small coloured dot for its meaning. `tone`: neutral (default), primary, urgent (red), warning (amber), good (green), info (blue). A neutral tag has no dot unless you add `dot`; `icon` adds a Lucide icon. The words say the state too, so it never relies on colour alone.
 - `Card title description action footer`: a box for a few related things, or a form.
 - `Stat label value icon hint`: a big number for a summary, three to a row: `<div className="grid grid-cols-3 gap-2 sm:gap-3">`.
 - `Field`, `TextArea`, `Select`, `Segmented`: see Forms. `Select` and `Segmented` take `options={[{ value, label }]}`, never with an empty value: use `"all"`, not `""`, for "everything". Without a visible label, give them `ariaLabel`.

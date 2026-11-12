@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { Badge } from "./ui/badge";
 import { Button as UiButton } from "./ui/button";
-import { TAG_TONES, TILE_TONES, type TagTone, type TileTone } from "./tones";
+import { QUIET_TILE, TAG_TONES, type TagTone, type TileTone } from "./tones";
 
 // The kit's names, plus the library's own (default, destructive), which AI often reaches for.
 const BUTTON_VARIANTS = {
@@ -40,7 +40,8 @@ export function Button({ variant = "outline", size = "md", className, href, chil
   const look = {
     variant: BUTTON_VARIANTS[variant] ?? "outline",
     size: BUTTON_SIZES[size] ?? "lg",
-    className: cn(isIcon ? "max-md:size-11" : "max-md:h-11 max-md:px-4", className),
+    // A link is always underlined, so it reads as one in black and white, and on a phone without hover.
+    className: cn(isIcon ? "max-md:size-11" : "max-md:h-11 max-md:px-4", variant === "link" && "underline", className),
   };
 
   if (href !== undefined) {
@@ -65,27 +66,35 @@ export function Button({ variant = "outline", size = "md", className, href, chil
   );
 }
 
-/** A picture for a thing: a Lucide icon on a soft tint. Give each kind of thing its own tone and icon, the same everywhere. */
-export function Tile({ icon: Icon, tone = "primary", size = "md" }: { icon?: LucideIcon; tone?: TileTone; size?: "sm" | "md" | "lg" }) {
+/**
+ * A picture for a thing: a grey Lucide icon on a quiet white tile. Give each
+ * kind of thing its own icon, the same everywhere. tone is accepted from the
+ * first kit, but doesn't change it: colour is only for what things mean.
+ */
+export function Tile({ icon: Icon, size = "md" }: { icon?: LucideIcon; tone?: TileTone; size?: "sm" | "md" | "lg" }) {
   const box = { sm: "size-8 rounded-lg", md: "size-10 rounded-xl", lg: "size-12 rounded-2xl" }[size];
   const glyph = { sm: "size-4", md: "size-5", lg: "size-6" }[size];
 
   return (
-    <span className={cn("flex shrink-0 items-center justify-center", box, TILE_TONES[tone] ?? TILE_TONES.primary)}>
+    <span className={cn("flex shrink-0 items-center justify-center", box, QUIET_TILE)}>
       {Icon && <Icon className={glyph} strokeWidth={1.75} aria-hidden="true" />}
     </span>
   );
 }
 
-/** A small tag for a state. tone: neutral, primary, urgent, warning, good, info; its dot shows the colour. icon adds a Lucide icon. */
-export function Tag({ tone = "neutral", dot = true, icon: Icon, children }: { tone?: TagTone; dot?: boolean; icon?: LucideIcon; children: ReactNode }) {
+/**
+ * A small tag for a state, in words, with a coloured dot for its meaning.
+ * tone: neutral (default), primary, urgent, warning, good, info. A neutral tag
+ * has no dot unless dot is set. icon adds a Lucide icon.
+ */
+export function Tag({ tone = "neutral", dot = false, icon: Icon, children }: { tone?: TagTone; dot?: boolean; icon?: LucideIcon; children: ReactNode }) {
   const colours = TAG_TONES[tone] ?? TAG_TONES.neutral;
   // The dot carries the meaning, so a tag with a meaning always has one.
   const showDot = dot || tone !== "neutral";
 
   return (
     <Badge className={cn("font-normal", colours.tag)}>
-      {showDot && <span className={cn("size-1.5 rounded-full", colours.dot)} aria-hidden="true" />}
+      {showDot && <span className={cn("size-2 rounded-full", colours.dot)} aria-hidden="true" />}
       {Icon && <Icon aria-hidden="true" />}
       {children}
     </Badge>
