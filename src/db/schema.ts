@@ -4,4 +4,6 @@
  * Only ever add tables and columns; never rename or remove one, so a new
  * version never loses what people have entered.
  */
-export { user } from "./auth-schema";
+import { user } from "./auth-schema";
+
+export { user };
