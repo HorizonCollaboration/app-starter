@@ -8,7 +8,12 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const client = postgres(process.env.DATABASE_URL, { max: 1 });
+const url = process.env.DATABASE_URL;
+
+// Laravel Cloud's databases only accept encrypted connections; a local one usually has none.
+const isLocal = /@(localhost|127\.0\.0\.1)[:/]|\/\/(localhost|127\.0\.0\.1)[:/]/.test(url);
+
+const client = postgres(url, { max: 1, ssl: isLocal ? false : "require" });
 
 try {
   await migrate(drizzle(client), { migrationsFolder: "./drizzle" });
