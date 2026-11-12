@@ -13,11 +13,14 @@ const fixedFiles = [
   "src/db/auth-schema.ts",
   "src/lib/auth.ts",
   "src/lib/email.ts",
+  "src/lib/access.ts",
   "src/lib/session.ts",
   "src/app/api/auth/**",
   "src/app/sign-in/**",
+  "src/proxy.ts",
   "tests/db.ts",
   "tests/sign-in.test.ts",
+  "tests/access.test.ts",
 ];
 
 const outside = "Horizon apps can't reach other websites; only src/lib/email.ts sends email.";
@@ -49,6 +52,7 @@ const eslintConfig = defineConfig([
             { group: ["**/auth-schema", "@/db/auth-schema"], message: "Sessions, sign-in links and accounts are secret: use requireUser() from @/lib/session." },
             { group: ["**/prototype/**", "**/prototype"], message: "prototype/ is for reference only: copy what you need into src/." },
             { group: ["@/lib/email"], message: "Only sign-in sends email." },
+            { group: ["@/lib/auth", "**/lib/auth"], message: "Use currentUser() or requireUser() from @/lib/session, which check the person may still use the app." },
           ],
         },
       ],

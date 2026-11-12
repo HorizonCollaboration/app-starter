@@ -1,5 +1,9 @@
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { db } from "@/db";
+import { session as sessions } from "@/db/auth-schema";
+import { mayStaySignedIn } from "./access";
 import { auth } from "./auth";
 
 /*
@@ -9,15 +13,31 @@ import { auth } from "./auth";
 
 export type SignedInUser = { id: string; name: string; email: string };
 
-/** The person signed in, or null. */
-export async function currentUser(): Promise<SignedInUser | null> {
-  const session = await auth.api.getSession({ headers: await headers() });
+/**
+ * The person signed in with these request headers, if they may still use the
+ * app. Someone Horizon says may not (say, they left a members-only app's
+ * community) has every session ended; if Horizon can't answer, they're only
+ * treated as signed out for now. Also used by src/proxy.ts.
+ */
+export async function signedInUser(requestHeaders: Headers, options: { refresh: boolean }): Promise<SignedInUser | null> {
+  const session = await auth.api.getSession({ headers: requestHeaders, query: { disableRefresh: !options.refresh } });
 
   if (!session) {
     return null;
   }
 
-  return { id: session.user.id, name: session.user.name, email: session.user.email };
+  const answer = await mayStaySignedIn(session.user.email);
+
+  if (answer === "no") {
+    await db.delete(sessions).where(eq(sessions.userId, session.user.id));
+  }
+
+  return answer === "yes" ? { id: session.user.id, name: session.user.name, email: session.user.email } : null;
+}
+
+/** The person signed in, or null. */
+export async function currentUser(): Promise<SignedInUser | null> {
+  return signedInUser(await headers(), { refresh: true });
 }
 
 /** The person signed in; anyone else is sent to the sign-in page. */

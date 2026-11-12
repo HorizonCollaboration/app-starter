@@ -12,7 +12,7 @@ export default function SignInForm() {
   if (state.sent) {
     return (
       <p className="rounded-card bg-success-soft p-4 text-ink">
-        Check your email for a link to sign in. It works once, for 15 minutes.
+        If you can use this app, a link to sign in is on its way to your email. It works once, for 15 minutes.
       </p>
     );
   }
@@ -30,6 +30,13 @@ export default function SignInForm() {
         required
         className="min-h-11 rounded-control border border-line bg-surface px-3"
       />
+      <label className="flex min-h-11 items-start gap-3 text-sm text-ink-muted">
+        <input type="checkbox" name="agreed" required className="mt-0.5 size-5 shrink-0" />
+        <span>
+          I won&apos;t add sensitive personal information to this app, such as patient details or anyone&apos;s health
+          records.
+        </span>
+      </label>
       {state.error && <p className="text-danger">{state.error}</p>}
       <button
         type="submit"

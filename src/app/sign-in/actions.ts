@@ -17,6 +17,10 @@ export async function sendSignInLink(_state: SignInState, form: FormData): Promi
     return { sent: false, error: "Please enter a valid email address." };
   }
 
+  if (form.get("agreed") !== "on") {
+    return { sent: false, error: "Please agree not to add sensitive personal information." };
+  }
+
   try {
     await auth.api.signInMagicLink({
       body: { email: parsed.data, callbackURL: "/" },
