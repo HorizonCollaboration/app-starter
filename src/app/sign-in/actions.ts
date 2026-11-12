@@ -22,7 +22,10 @@ export async function sendSignInLink(_state: SignInState, form: FormData): Promi
       body: { email: parsed.data, callbackURL: "/" },
       headers: await headers(),
     });
-  } catch {
+  } catch (error) {
+    // Into the app's logs, so whoever looks after it can see why.
+    console.error("Sending a sign-in link failed:", error);
+
     return { sent: false, error: "The sign-in link couldn't be sent. Please try again in a few minutes." };
   }
 
