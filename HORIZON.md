@@ -26,11 +26,11 @@ Read this before changing anything, whether you're a person or an AI.
 1. **Check who's signed in, every time.** Every page that shows someone's data and every server action calls `requireUser()` from `src/lib/session.ts`, and only reads or changes rows that belong to that person (or that the brief says are shared). Never trust an id sent from the browser without checking it belongs to them.
 2. **Check what people send.** Validate every server action's input with `zod`, with sensible length limits.
 3. **Only ever add to the database.** Add tables and columns; never rename or remove them, so a new version never loses what people have entered.
-4. **No new packages.** Use what's in `package.json`.
+4. **No new packages.** Use what's in `package.json`, including `lucide-react` for icons (`import { House } from "lucide-react"`).
 5. **Nothing leaves the app** except sign-in emails, sent by `src/lib/email.ts`. No other websites, scripts, fonts or images from elsewhere, and no AI services.
 6. **No secrets in the code.** Settings come from environment variables that Horizon or Laravel Cloud sets.
 7. **Made-up data only.** Sample data is realistic for the problem and clearly made up: no real people, contact details, addresses or record numbers.
-8. **Style with the theme's names.** Colours and shapes come from `src/theme.css` as Tailwind classes like `bg-surface`, `text-ink`, `bg-primary` and `rounded-card`, never Tailwind's own colours like `blue-500` or values in square brackets.
+8. **Follow the style.** `DESIGN.md` is this app's style guide (layout, picture tiles, rows, buttons, tags): follow it. Colours and shapes come from `src/theme.css` as Tailwind classes like `bg-surface`, `text-ink`, `bg-primary`, `bg-peach-soft` and `rounded-card`, never Tailwind's own colours like `blue-500` or values in square brackets.
 9. **Works on a phone.** Nothing scrolls sideways on a 375px screen, tap targets are at least 44px (`min-h-11`), and every input has a label.
 10. **Plain words.** Everyday British English. Buttons say what they do, and empty screens say what to do next.
 
