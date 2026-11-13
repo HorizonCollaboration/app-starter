@@ -49,7 +49,13 @@ const importRules = [
 const tables = "Horizon's own tables (email updates, sign-in) are only for its fixed files: use notify() from @/lib/updates.";
 const tablePattern = "(update_(recipient|manager|delivery|event)\\b|\\b(from|into|update|join|table)\\s+\\\"?(session|verification|account)\\b)";
 
+const ownSql = "Use Drizzle's queries on the app's own tables, not SQL of its own.";
+
 const syntaxRules = [
+  { selector: "CallExpression[callee.property.name='execute']", message: ownSql },
+  { selector: "MemberExpression[property.name='$client']", message: ownSql },
+  { selector: "MemberExpression[object.name='sql'][property.name=/^(raw|identifier)$/]", message: ownSql },
+  { selector: "MemberExpression[computed=true][property.value='execute']", message: ownSql },
   { selector: `Literal[value=/${tablePattern}/i]`, message: tables },
   { selector: `TemplateElement[value.raw=/${tablePattern}/i]`, message: tables },
   { selector: "ImportExpression", message: "Use a normal import at the top of the file." },

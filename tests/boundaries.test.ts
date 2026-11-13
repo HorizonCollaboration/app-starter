@@ -31,7 +31,11 @@ const fixed = [
   "src/components/Banner.tsx",
   "src/proxy.ts",
   "src/kit/",
-  "tests/",
+  "tests/db.ts",
+  "tests/sign-in.test.ts",
+  "tests/access.test.ts",
+  "tests/updates.test.ts",
+  "tests/boundaries.test.ts",
 ];
 
 /** What app code may never import, however the path is written. */
@@ -48,6 +52,9 @@ const privateFiles = [
 ];
 
 const updatesModule = "src/lib/updates.ts";
+
+/** Running SQL of its own, which could name any table however it's spelt: app code uses Drizzle's queries on its own tables. */
+const ownSql = /\.\s*execute\s*\(|\[\s*["'`]execute|\$client|\bsql\s*\.\s*(raw|identifier)\b/;
 
 /** Email updates' tables and the secret sign-in ones, by name: raw SQL or a table defined again. */
 const privateTables = /\bupdate_(recipient|manager|delivery|event)\b|\b(from|into|update|join|table)\s+"?(session|verification|account)\b|pgTable\(\s*["\'`](session|verification|account|user)["\'`]/i;
@@ -69,7 +76,7 @@ function filesIn(directory: string): string[] {
   });
 }
 
-const appFiles = filesIn("src").filter((path) => !fixed.some((prefix) => path === prefix || path.startsWith(prefix)));
+const appFiles = [...filesIn("src"), ...filesIn("tests")].filter((path) => !fixed.some((prefix) => path === prefix || path.startsWith(prefix)));
 
 /** Every module a file imports or re-exports, with the statement it's in. */
 function importsOf(path: string): { specifier: string; node: ts.Node }[] {
@@ -151,6 +158,11 @@ describe("the app's own code and Horizon's files", () => {
           return [];
         }
 
+        // The app's own code, and for its tests the test database: never anywhere else that could pass on Horizon's files.
+        if (!target.startsWith("src/") && !(path.startsWith("tests/") && target === "tests/db.ts")) {
+          return [`${path} imports ${specifier}, which is outside the app's own code.`];
+        }
+
         if (privateFiles.some((file) => target === file || target.startsWith(file)) && !isAllowedUse(path, target, node)) {
           return [`${path} imports ${specifier}, which is one of Horizon's own files.`];
         }
@@ -168,6 +180,12 @@ describe("the app's own code and Horizon's files", () => {
 
   it("never reaches email updates' tables or the sign-in tables by name", () => {
     const problems = appFiles.filter((path) => privateTables.test(readFileSync(join(root, path), "utf8")));
+
+    expect(problems).toEqual([]);
+  });
+
+  it("never runs SQL of its own", () => {
+    const problems = appFiles.filter((path) => ownSql.test(readFileSync(join(root, path), "utf8")));
 
     expect(problems).toEqual([]);
   });
