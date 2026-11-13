@@ -87,6 +87,41 @@ export async function mayStaySignedIn(email: string): Promise<"yes" | "no" | "un
   }
 }
 
+/**
+ * Whether Horizon says this person manages the app's email updates: one of
+ * its community's owners. Asked fresh each time, since it's only checked on
+ * the Updates page. While developing, without Horizon, anyone does.
+ */
+export async function managesUpdates(email: string): Promise<boolean> {
+  const url = process.env.HORIZON_ACCESS_URL;
+  const token = process.env.HORIZON_ACCESS_TOKEN;
+
+  if (!url || !token) {
+    return process.env.NODE_ENV !== "production";
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ email: email.toLowerCase() }),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const answer = (await response.json()) as { allowed?: unknown; manages_updates?: unknown };
+
+    return answer.allowed === true && answer.manages_updates === true;
+  } catch (error) {
+    console.error("Horizon couldn't say who manages updates:", error);
+
+    return false;
+  }
+}
+
 /** For tests: forget every answer. */
 export function forgetAnswers(): void {
   yeses.clear();

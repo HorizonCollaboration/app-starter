@@ -27,7 +27,7 @@ Read this before changing anything, whether you're a person or an AI.
 2. **Check what people send.** Validate every server action's input with `zod`, with sensible length limits.
 3. **Only ever add to the database.** Add tables and columns; never rename or remove them, so a new version never loses what people have entered.
 4. **No new packages.** Use what's in `package.json`, including `lucide-react` for icons (`import { House } from "lucide-react"`).
-5. **Nothing leaves the app** except sign-in emails, sent by `src/lib/email.ts`, and asking Horizon who may sign in, in `src/lib/access.ts`. No other websites, scripts, fonts or images from elsewhere, and no AI services.
+5. **Nothing leaves the app** except sign-in emails and email updates, sent by `src/lib/email.ts`, and asking Horizon who may sign in, in `src/lib/access.ts`. No other websites, scripts, fonts or images from elsewhere, and no AI services. To tell people something happened, use `notify()` (see Email updates).
 6. **No secrets in the code.** Settings come from environment variables that Horizon or Laravel Cloud sets.
 7. **Made-up data only.** Sample data is realistic for the problem and clearly made up: no real people, contact details, addresses or record numbers.
 8. **No sensitive personal information.** Everyone agrees not to add it when they sign in, so never ask for it: no patient details, health records or anything like them.
@@ -35,17 +35,33 @@ Read this before changing anything, whether you're a person or an AI.
 10. **Works on a phone.** Nothing scrolls sideways on a 375px screen, tap targets are at least 44px (`min-h-11`), and every input has a label.
 11. **Plain words.** Everyday British English. Buttons say what they do, and empty screens say what to do next.
 
+## Email updates
+
+People can get an email when something happens in the app, and a summary every Monday. The app only says what happened; the community's owners choose who hears about it, on the fixed `/updates` page, and each person confirms from their own inbox first.
+
+1. Declare each kind of update in `src/updates.ts`, with a `label` and a `description`. Never rename one.
+2. Where it happens, in a server action, call `notify` with the database, the kind, and a sentence or two saying what happened:
+
+```ts
+import { notify } from "@/lib/updates";
+
+await notify(db, "new_request", `${bank.name} needs ${need.quantity} ${need.item}.`);
+```
+
+Say only what the people who chose it need to know: never anyone's email address, and nothing personal. `notify` never fails the action, and sends nothing until someone has chosen that update.
+
 ## Fixed files
 
 Horizon keeps these the same in every app, and rejects a version that changes them:
 
 - `.github/`, `next.config.ts`, `drizzle.config.ts`, `eslint.config.mjs`, `tsconfig.json`, `vitest.config.mts`, `package.json`'s packages, `scripts/`
 - `src/db/index.ts`, `src/db/auth-schema.ts` (the secret sign-in tables), `src/lib/auth.ts`, `src/lib/session.ts`, `src/lib/email.ts`, `src/lib/access.ts`, `src/app/api/auth/`, `src/app/sign-in/`
+- Email updates: `src/db/updates-schema.ts`, `src/lib/updates.ts`, `src/app/updates/`, `src/app/api/updates/`
 - `src/proxy.ts`, which keeps a members-only app behind sign-in, and `src/middleware.ts` and `src/instrumentation*.ts`, which a Horizon app doesn't have
 - `src/app/template.*`, `not-found.*`, `loading.*`, `error.*`, `global-error.*`, `default.*`, `forbidden.*`, `unauthorized.*` and `@` folders at the top of `src/app/`, which the open sign-in page would show too: an app doesn't add them
 - `src/app/layout.tsx`, `src/app/globals.css`, `src/theme.css`, `src/components/Banner.tsx`, `src/horizon.json`
 - `src/kit/` (Horizon's kit), `KIT.md`, `components.json`
-- `tests/db.ts`, `tests/sign-in.test.ts`, `tests/access.test.ts`, `HORIZON.md`, `LICENSE`
+- `tests/db.ts`, `tests/sign-in.test.ts`, `tests/access.test.ts`, `tests/updates.test.ts`, `HORIZON.md`, `LICENSE`
 - Any file already in `drizzle/` (add new ones with `npm run db:generate`)
 
 ## Checks
