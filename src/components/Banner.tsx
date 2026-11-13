@@ -8,7 +8,10 @@ export default function Banner() {
       <a href={horizon.problemUrl} className="font-medium text-foreground underline underline-offset-2">
         Horizon
       </a>
-      , for trying out. Sign in with your email, but please don&apos;t enter any other real personal details.
+      , for trying out. Sign in with your email, but please don&apos;t enter any other real personal details.{" "}
+      <a href="/updates" className="font-medium text-foreground underline underline-offset-2">
+        Email updates
+      </a>
     </div>
   );
 }

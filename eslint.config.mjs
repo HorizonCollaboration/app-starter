@@ -15,25 +15,49 @@ const fixedFiles = [
   "src/lib/email.ts",
   "src/lib/access.ts",
   "src/lib/session.ts",
+  "src/lib/updates.ts",
+  "src/db/updates-schema.ts",
+  "src/app/updates/**",
+  "src/app/api/updates/**",
   "src/app/api/auth/**",
   "src/app/sign-in/**",
   "src/proxy.ts",
   "tests/db.ts",
   "tests/sign-in.test.ts",
   "tests/access.test.ts",
+  "tests/updates.test.ts",
+  "tests/boundaries.test.ts",
 ];
 
 const outside = "Horizon apps can't reach other websites; only src/lib/email.ts sends email.";
+
+// App code tells people something happened with notify(), and uses nothing else of email updates.
+const importPaths = [{ name: "@/lib/updates", allowImportNames: ["notify"], message: "Use notify() from @/lib/updates; the rest of email updates is Horizon's." }];
 
 const importRules = [
   { group: ["node:*", "child_process", "fs", "fs/*", "net", "http", "https", "http2", "dgram", "dns", "tls", "vm", "worker_threads", "cluster", "os", "process"], message: "Horizon apps don't use Node's system modules." },
   { group: ["**/auth-schema", "@/db/auth-schema"], message: "Sessions, sign-in links and accounts are secret: use requireUser() from @/lib/session." },
   { group: ["**/prototype/**", "**/prototype"], message: "prototype/ is for reference only: copy what you need into src/." },
-  { group: ["@/lib/email"], message: "Only sign-in sends email." },
+  { group: ["@/lib/email"], message: "Only sign-in and email updates send email: use notify() from @/lib/updates." },
+  { regex: "^\\.{1,2}/(.*/)?(email|updates|updates-schema|access)$", message: "Import from @/lib/... so Horizon's rules apply: use notify() from @/lib/updates." },
+  { regex: "^@/(.*/)?\\.{1,2}/|^@/.*//|^@//", message: "Write the path plainly, such as @/lib/updates." },
+  { group: ["@/lib/access"], message: "Only Horizon's own files ask Horizon about people." },
+  { group: ["**/updates-schema", "@/db/updates-schema"], message: "Use notify() from @/lib/updates; its tables are Horizon's." },
   { group: ["@/lib/auth", "**/lib/auth"], message: "Use currentUser() or requireUser() from @/lib/session, which check the person may still use the app." },
 ];
 
+const tables = "Horizon's own tables (email updates, sign-in) are only for its fixed files: use notify() from @/lib/updates.";
+const tablePattern = "(update_(recipient|manager|delivery|event)\\b|\\b(from|into|update|join|table)\\s+\\\"?(session|verification|account)\\b)";
+
+const ownSql = "Use Drizzle's queries on the app's own tables, not SQL of its own.";
+
 const syntaxRules = [
+  { selector: "CallExpression[callee.property.name='execute']", message: ownSql },
+  { selector: "MemberExpression[property.name='$client']", message: ownSql },
+  { selector: "MemberExpression[object.name='sql'][property.name=/^(raw|identifier)$/]", message: ownSql },
+  { selector: "MemberExpression[computed=true][property.value='execute']", message: ownSql },
+  { selector: `Literal[value=/${tablePattern}/i]`, message: tables },
+  { selector: `TemplateElement[value.raw=/${tablePattern}/i]`, message: tables },
   { selector: "ImportExpression", message: "Use a normal import at the top of the file." },
   { selector: "NewExpression[callee.name='Function']", message: "Don't run code from text." },
   { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: "Don't put unchecked HTML on the page." },
@@ -77,7 +101,7 @@ const eslintConfig = defineConfig([
         { name: "process", message: "Settings and secrets are read only by Horizon's fixed files." },
         { name: "require", message: "Use import." },
       ],
-      "no-restricted-imports": ["error", { patterns: importRules }],
+      "no-restricted-imports": ["error", { paths: importPaths, patterns: importRules }],
       "no-restricted-syntax": ["error", ...syntaxRules],
     },
   },
@@ -86,7 +110,7 @@ const eslintConfig = defineConfig([
     files: appCode,
     ignores: ["src/kit/**"],
     rules: {
-      "no-restricted-imports": ["error", { patterns: [...importRules, ...kitImportRules] }],
+      "no-restricted-imports": ["error", { paths: importPaths, patterns: [...importRules, ...kitImportRules] }],
       "no-restricted-syntax": ["error", ...syntaxRules, ...kitSyntaxRules],
     },
   },

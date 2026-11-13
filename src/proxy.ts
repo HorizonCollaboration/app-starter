@@ -20,9 +20,18 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   return NextResponse.next();
 }
 
-/** Signing in itself: exactly "/sign-in", and better-auth's own routes under "/api/auth/", never "/sign-in-help" or "/api/authors". */
+/**
+ * Signing in itself: exactly "/sign-in", and better-auth's own routes under "/api/auth/", never "/sign-in-help" or "/api/authors".
+ * And email updates: confirming or stopping them from an email (the person may not use the app), and Horizon asking for the weekly summary.
+ */
 function isOpenToEveryone(path: string): boolean {
-  return path === "/sign-in" || path.startsWith("/api/auth/");
+  return (
+    path === "/sign-in" ||
+    path.startsWith("/api/auth/") ||
+    path === "/updates/confirm" ||
+    path === "/updates/stop" ||
+    path === "/api/updates/weekly"
+  );
 }
 
 export const config = {
