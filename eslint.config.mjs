@@ -26,6 +26,7 @@ const fixedFiles = [
   "tests/sign-in.test.ts",
   "tests/access.test.ts",
   "tests/updates.test.ts",
+  "tests/boundaries.test.ts",
 ];
 
 const outside = "Horizon apps can't reach other websites; only src/lib/email.ts sends email.";
@@ -39,11 +40,18 @@ const importRules = [
   { group: ["**/prototype/**", "**/prototype"], message: "prototype/ is for reference only: copy what you need into src/." },
   { group: ["@/lib/email"], message: "Only sign-in and email updates send email: use notify() from @/lib/updates." },
   { regex: "^\\.{1,2}/(.*/)?(email|updates|updates-schema|access)$", message: "Import from @/lib/... so Horizon's rules apply: use notify() from @/lib/updates." },
+  { regex: "^@/(.*/)?\\.{1,2}/|^@/.*//|^@//", message: "Write the path plainly, such as @/lib/updates." },
+  { group: ["@/lib/access"], message: "Only Horizon's own files ask Horizon about people." },
   { group: ["**/updates-schema", "@/db/updates-schema"], message: "Use notify() from @/lib/updates; its tables are Horizon's." },
   { group: ["@/lib/auth", "**/lib/auth"], message: "Use currentUser() or requireUser() from @/lib/session, which check the person may still use the app." },
 ];
 
+const tables = "Horizon's own tables (email updates, sign-in) are only for its fixed files: use notify() from @/lib/updates.";
+const tablePattern = "(update_(recipient|manager|delivery|event)\\b|\\b(from|into|update|join|table)\\s+\\\"?(session|verification|account)\\b)";
+
 const syntaxRules = [
+  { selector: `Literal[value=/${tablePattern}/i]`, message: tables },
+  { selector: `TemplateElement[value.raw=/${tablePattern}/i]`, message: tables },
   { selector: "ImportExpression", message: "Use a normal import at the top of the file." },
   { selector: "NewExpression[callee.name='Function']", message: "Don't run code from text." },
   { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: "Don't put unchecked HTML on the page." },

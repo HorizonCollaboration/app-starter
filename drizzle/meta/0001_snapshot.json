@@ -1,5 +1,5 @@
 {
-  "id": "2b713009-e458-4d75-9655-43b243b6edb5",
+  "id": "6501d555-95ab-460e-a185-32e8af917bff",
   "prevId": "4f2ee2f6-bd3f-42bd-9bfb-645e19af1419",
   "version": "7",
   "dialect": "postgresql",
@@ -512,6 +512,12 @@
         },
         "confirmed_at": {
           "name": "confirmed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "asked_at": {
+          "name": "asked_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false

@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { and, asc, desc, eq, gte, isNotNull, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, like, lt, or } from "drizzle-orm";
 import type { Database } from "@/db";
 import { updateDelivery, updateEvent, updateManager, updateRecipient } from "@/db/updates-schema";
 import horizon from "@/horizon.json";
@@ -17,8 +17,11 @@ import { sendEmail } from "./email";
 /** The Monday summary, alongside the app's own kinds of update in src/updates.ts. */
 export const Weekly = "weekly";
 
-/** Asking someone to confirm, logged with what was sent. */
+/** Asking someone to confirm, logged with what was sent as "confirm:<kind>". */
 const Confirming = "confirm";
+
+/** At most this many emails a second, under Resend's own limit. */
+const perSecond = 4;
 
 const day = 24 * 60 * 60 * 1000;
 
@@ -31,7 +34,10 @@ const perPersonPerHour = 10;
 /** At most this many people asked to confirm in an hour, and each asked again at most once a day. */
 const confirmationsPerHour = 20;
 
-const declared = updates as Record<string, { label: string; description: string }>;
+/** The app's own kinds of update, never one of the names Horizon keeps for itself. */
+const declared = Object.fromEntries(
+  Object.entries(updates as Record<string, { label: string; description: string }>).filter(([kind]) => kind !== Weekly && kind !== Confirming && !kind.includes(":")),
+);
 
 /** The kinds of update people can choose, with the Monday summary first. */
 export function updateKinds(): { kind: string; label: string; description: string }[] {
@@ -71,9 +77,10 @@ export async function notify(db: Database, kind: UpdateKind, summary: string): P
     const recipients = await confirmedFor(db, kind);
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-    // All at once, so the person's action never waits on one slow email after another.
-    await Promise.allSettled(
-      recipients.map(async (recipient) => {
+    // A few at a time, so the person's action doesn't wait on one email after another, nor trip Resend's limit.
+    await inBatches(
+      recipients,
+      async (recipient) => {
         const lately = await db.$count(
           updateDelivery,
           and(eq(updateDelivery.email, recipient.email), eq(updateDelivery.event, kind), eq(updateDelivery.status, "sent"), gte(updateDelivery.createdAt, hourAgo)),
@@ -86,7 +93,7 @@ export async function notify(db: Database, kind: UpdateKind, summary: string): P
         }
 
         await deliver(db, recipient, kind, `${label}: ${horizon.name}`, `${text}\n\nSee it in ${horizon.name}: ${siteUrl()}`);
-      }),
+      },
     );
   } catch (error) {
     console.error("An update couldn't be sent:", error);
@@ -131,11 +138,11 @@ export async function sendWeeklySummary(db: Database, now = new Date()): Promise
 
   const recipients = (await confirmedFor(db, Weekly)).filter((recipient) => !alreadySent.has(recipient.email));
 
-  await Promise.allSettled(
-    recipients.map((recipient) => deliver(db, recipient, Weekly, `This week in ${horizon.name}`, `${lines.join("\n")}\nSee everything in ${horizon.name}: ${siteUrl()}`)),
+  const sent = await inBatches(recipients, (recipient) =>
+    deliver(db, recipient, Weekly, `This week in ${horizon.name}`, `${lines.join("\n")}\nSee everything in ${horizon.name}: ${siteUrl()}`),
   );
 
-  return recipients.length;
+  return sent.filter(Boolean).length;
 }
 
 /**
@@ -152,10 +159,10 @@ export type AddResult = "asked" | "already" | "recently" | "busy";
 
 /**
  * Asks someone whether they'd like this kind of update: they get an email to
- * confirm, and nothing else until they do. Someone asked in the last day
- * isn't asked again yet, and only so many are asked in an hour, so the app
- * can't be used to fill a stranger's inbox. Named by the manager's email,
- * which they can't make say anything else.
+ * confirm, and nothing else until they do. Asked once a day at most for each
+ * kind, claimed in one step so a double click sends one email, and only so
+ * many people an hour, so the app can't be used to fill a stranger's inbox.
+ * Named by the manager's email, which they can't make say anything else.
  */
 export async function addRecipient(db: Database, email: string, kind: string, managerEmail: string): Promise<AddResult> {
   const address = email.trim().toLowerCase();
@@ -165,34 +172,37 @@ export async function addRecipient(db: Database, email: string, kind: string, ma
     throw new Error("That isn't one of this app's updates.");
   }
 
+  const now = new Date();
   const [existing] = await db.select().from(updateRecipient).where(and(eq(updateRecipient.email, address), eq(updateRecipient.event, kind)));
 
   if (existing?.confirmedAt) {
     return "already";
   }
 
-  const now = Date.now();
-  const askedLately = await db.$count(
+  const askedThisHour = await db.$count(
     updateDelivery,
-    and(eq(updateDelivery.email, address), eq(updateDelivery.event, Confirming), gte(updateDelivery.createdAt, new Date(now - day))),
+    and(like(updateDelivery.event, `${Confirming}:%`), eq(updateDelivery.status, "sent"), gte(updateDelivery.createdAt, new Date(now.getTime() - 60 * 60 * 1000))),
   );
-
-  if (askedLately > 0) {
-    return "recently";
-  }
-
-  const askedThisHour = await db.$count(updateDelivery, and(eq(updateDelivery.event, Confirming), gte(updateDelivery.createdAt, new Date(now - 60 * 60 * 1000))));
 
   if (askedThisHour >= confirmationsPerHour) {
     return "busy";
   }
 
   const token = randomBytes(32).toString("base64url");
+  const claimed = existing
+    ? await db
+        .update(updateRecipient)
+        .set({ tokenHash: hash(token), askedAt: now })
+        .where(and(eq(updateRecipient.id, existing.id), or(isNull(updateRecipient.askedAt), lt(updateRecipient.askedAt, new Date(now.getTime() - day)))))
+        .returning()
+    : await db
+        .insert(updateRecipient)
+        .values({ id: randomUUID(), email: address, event: kind, tokenHash: hash(token), askedAt: now, addedBy: managerEmail })
+        .onConflictDoNothing()
+        .returning();
 
-  if (existing) {
-    await db.update(updateRecipient).set({ tokenHash: hash(token) }).where(eq(updateRecipient.id, existing.id));
-  } else {
-    await db.insert(updateRecipient).values({ id: randomUUID(), email: address, event: kind, tokenHash: hash(token), addedBy: managerEmail }).onConflictDoNothing();
+  if (claimed.length === 0) {
+    return "recently";
   }
 
   const subject = `Would you like updates from ${horizon.name}?`;
@@ -209,9 +219,11 @@ export async function addRecipient(db: Database, email: string, kind: string, ma
         "If you don't want them, ignore this email. You'll only be asked again if someone adds you another day.",
       ].join("\n"),
     });
-    await log(db, address, Confirming, subject, "sent");
+    await log(db, address, `${Confirming}:${kind}`, subject, "sent");
   } catch (error) {
-    await log(db, address, Confirming, subject, "failed", reason(error));
+    // Not sent, so they can be asked again straight away.
+    await db.update(updateRecipient).set({ askedAt: null }).where(eq(updateRecipient.id, claimed[0].id));
+    await log(db, address, `${Confirming}:${kind}`, subject, "failed", reason(error));
     throw error;
   }
 
@@ -325,7 +337,23 @@ async function confirmedFor(db: Database, kind: string) {
     .where(and(eq(updateRecipient.event, kind), isNotNull(updateRecipient.confirmedAt)));
 }
 
-async function deliver(db: Database, recipient: { id: string; email: string }, kind: string, subject: string, body: string): Promise<void> {
+/** Runs $send for each, a few a second. Whether each was sent. */
+async function inBatches<T>(items: T[], send: (item: T) => Promise<boolean | void>): Promise<boolean[]> {
+  const results: boolean[] = [];
+
+  for (let start = 0; start < items.length; start += perSecond) {
+    if (start > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    const batch = await Promise.allSettled(items.slice(start, start + perSecond).map(send));
+    results.push(...batch.map((result) => result.status === "fulfilled" && result.value !== false));
+  }
+
+  return results;
+}
+
+async function deliver(db: Database, recipient: { id: string; email: string }, kind: string, subject: string, body: string): Promise<boolean> {
   try {
     await sendEmail({
       to: recipient.email,
@@ -334,8 +362,12 @@ async function deliver(db: Database, recipient: { id: string; email: string }, k
       text: `${body}\n\nTo stop these emails: ${siteUrl()}/updates/stop?token=${recipient.id}.${sign(recipient.id)}`,
     });
     await log(db, recipient.email, kind, subject, "sent");
+
+    return true;
   } catch (error) {
     await log(db, recipient.email, kind, subject, "failed", reason(error));
+
+    return false;
   }
 }
 

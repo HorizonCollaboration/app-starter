@@ -48,7 +48,7 @@ import { notify } from "@/lib/updates";
 await notify(db, "new_request", `${bank.name} needs ${need.quantity} ${need.item}.`);
 ```
 
-Say only what the people who chose it need to know: never anyone's email address, and nothing personal. `notify` never fails the action, and sends nothing until someone has chosen that update.
+Say only what the people who chose it need to know: never anyone's email address, and nothing personal. `notify` never fails the action, and sends nothing until someone has chosen that update. Import it exactly like that, on one line: it's the only part of email updates app code may use, and a fixed test checks.
 
 ## Fixed files
 
@@ -61,7 +61,7 @@ Horizon keeps these the same in every app, and rejects a version that changes th
 - `src/app/template.*`, `not-found.*`, `loading.*`, `error.*`, `global-error.*`, `default.*`, `forbidden.*`, `unauthorized.*` and `@` folders at the top of `src/app/`, which the open sign-in page would show too: an app doesn't add them
 - `src/app/layout.tsx`, `src/app/globals.css`, `src/theme.css`, `src/components/Banner.tsx`, `src/horizon.json`
 - `src/kit/` (Horizon's kit), `KIT.md`, `components.json`
-- `tests/db.ts`, `tests/sign-in.test.ts`, `tests/access.test.ts`, `tests/updates.test.ts`, `HORIZON.md`, `LICENSE`
+- `tests/db.ts`, `tests/sign-in.test.ts`, `tests/access.test.ts`, `tests/updates.test.ts`, `tests/boundaries.test.ts` (which checks app code uses none of Horizon's own files, apart from `notify` and `signOut`), `HORIZON.md`, `LICENSE`
 - Any file already in `drizzle/` (add new ones with `npm run db:generate`)
 
 ## Checks

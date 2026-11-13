@@ -6,16 +6,27 @@ import { updateDelivery, updateEvent } from "@/db/updates-schema";
 import { testDatabase } from "./db";
 
 const sent: { to: string; subject: string; text: string }[] = [];
+let failNext = false;
 
 vi.mock("@/lib/email", () => ({
   sendEmail: async (email: { to: string; subject: string; text: string }) => {
+    if (failNext) {
+      failNext = false;
+      throw new Error("Resend is down.");
+    }
+
     sent.push(email);
   },
 }));
 
 // An app with one kind of update, as an app declares them in src/updates.ts.
 vi.mock("@/updates", () => ({
-  updates: { new_request: { label: "A new request", description: "When a food bank asks for something." } },
+  updates: {
+    new_request: { label: "A new request", description: "When a food bank asks for something." },
+    // Names Horizon keeps for itself, which an app can't use.
+    weekly: { label: "Not the summary", description: "" },
+    confirm: { label: "Not a confirmation", description: "" },
+  },
 }));
 
 const updates = await import("@/lib/updates");
@@ -111,16 +122,38 @@ describe("email updates", () => {
     expect(sent.filter((email) => email.subject.startsWith("This week"))).toHaveLength(1);
   });
 
-  it("asks someone to confirm at most once a day, and only so many people an hour", async () => {
+  it("asks someone to confirm at most once a day for each kind, and only so many people an hour", async () => {
     expect(await updates.addRecipient(db, "sam@example.com", "new_request", "owner@example.com")).toBe("asked");
     expect(await updates.addRecipient(db, "sam@example.com", "new_request", "owner@example.com")).toBe("recently");
+    expect(await updates.addRecipient(db, "sam@example.com", updates.Weekly, "owner@example.com")).toBe("asked");
     expect(sent.at(-1)?.text).toContain("owner@example.com would like to send you");
 
-    for (let n = 1; n < 20; n++) {
+    for (let n = 2; n < 20; n++) {
       await updates.addRecipient(db, `person${n}@example.com`, "new_request", "owner@example.com");
     }
 
     expect(await updates.addRecipient(db, "one-too-many@example.com", "new_request", "owner@example.com")).toBe("busy");
+  });
+
+  it("lets a manager ask again straight away when the email didn't go", async () => {
+    failNext = true;
+    await expect(updates.addRecipient(db, "sam@example.com", "new_request", "owner@example.com")).rejects.toThrow();
+
+    expect(await updates.addRecipient(db, "sam@example.com", "new_request", "owner@example.com")).toBe("asked");
+  });
+
+  it("sends one email when someone is asked twice at once", async () => {
+    const results = await Promise.all([
+      updates.addRecipient(db, "sam@example.com", "new_request", "owner@example.com"),
+      updates.addRecipient(db, "sam@example.com", "new_request", "owner@example.com"),
+    ]);
+
+    expect(results.sort()).toEqual(["asked", "recently"]);
+    expect(sent).toHaveLength(1);
+  });
+
+  it("never lets an app use the names Horizon keeps for itself", () => {
+    expect(updates.updateKinds().map(({ kind }) => kind)).toEqual([updates.Weekly, "new_request"]);
   });
 
   it("holds back emails to anyone who's had too many of one kind this hour, and says so", async () => {

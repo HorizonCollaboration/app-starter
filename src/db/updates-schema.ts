@@ -25,6 +25,8 @@ export const updateRecipient = pgTable(
     event: text("event").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
     confirmedAt: timestamp("confirmed_at"),
+    /** When they were last asked to confirm: once a day at most, per kind. */
+    askedAt: timestamp("asked_at"),
     addedBy: text("added_by").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },

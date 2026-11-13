@@ -27,6 +27,7 @@ CREATE TABLE "update_recipient" (
 	"event" text NOT NULL,
 	"token_hash" text NOT NULL,
 	"confirmed_at" timestamp,
+	"asked_at" timestamp,
 	"added_by" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "update_recipient_token_hash_unique" UNIQUE("token_hash"),
