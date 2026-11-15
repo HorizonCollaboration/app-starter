@@ -29,7 +29,8 @@ const fixedFiles = [
   "tests/boundaries.test.ts",
 ];
 
-const outside = "Horizon apps can't reach other websites; only src/lib/email.ts sends email.";
+const outside = "Reach other websites with fetch, from the server.";
+const settings = "Read only the app's own settings, each by its full name starting OUTSIDE_ (process.env.OUTSIDE_SOURCE_KEY), and never change them.";
 
 // App code tells people something happened with notify(), and uses nothing else of email updates.
 const importPaths = [{ name: "@/lib/updates", allowImportNames: ["notify"], message: "Use notify() from @/lib/updates; the rest of email updates is Horizon's." }];
@@ -43,6 +44,8 @@ const importRules = [
   { regex: "^@/(.*/)?\\.{1,2}/|^@/.*//|^@//", message: "Write the path plainly, such as @/lib/updates." },
   { group: ["@/lib/access"], message: "Only Horizon's own files ask Horizon about people." },
   { group: ["**/updates-schema", "@/db/updates-schema"], message: "Use notify() from @/lib/updates; its tables are Horizon's." },
+  { group: ["@next/env", "next/dist/*", "next/dist/**"], message: "Read only the app's own settings, as process.env.OUTSIDE_NAME." },
+  { group: ["next/script"], message: "Don't load scripts from elsewhere." },
   { group: ["@/lib/auth", "**/lib/auth"], message: "Use currentUser() or requireUser() from @/lib/session, which check the person may still use the app." },
 ];
 
@@ -61,8 +64,16 @@ const syntaxRules = [
   { selector: "ImportExpression", message: "Use a normal import at the top of the file." },
   { selector: "NewExpression[callee.name='Function']", message: "Don't run code from text." },
   { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: "Don't put unchecked HTML on the page." },
-  { selector: "Literal[value=/^(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/i]", message: outside },
-  { selector: "TemplateElement[value.raw=/(https?:)?\\/\\/(?!www\\.w3\\.org\\/)/i]", message: outside },
+  // Settings: only the app's own, each read by its full name, process.env.OUTSIDE_NAME, and never changed.
+  { selector: "Identifier[name='process']:not(MemberExpression[property.name='env'] > Identifier.object)", message: settings },
+  { selector: "MemberExpression[object.name='process'][property.name='env']:not(MemberExpression[computed=false][property.name=/^OUTSIDE_[A-Z0-9_]+$/] > MemberExpression.object)", message: settings },
+  { selector: "MemberExpression[object.name='process'][computed=true]", message: settings },
+  { selector: "AssignmentExpression > MemberExpression.left[object.object.name='process']", message: settings },
+  { selector: "UpdateExpression > MemberExpression.argument[object.object.name='process']", message: settings },
+  { selector: "UnaryExpression[operator='delete'] > MemberExpression.argument[object.object.name='process']", message: settings },
+  // Code built from text, however Function is reached.
+  { selector: "MemberExpression[property.name='constructor']", message: "Don't run code from text." },
+  { selector: "MemberExpression[computed=true][property.value='constructor']", message: "Don't run code from text." },
 ];
 
 // Every screen is built from Horizon's kit (KIT.md), which owns the colours, so the look can change without rewriting the app.
@@ -90,7 +101,6 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-globals": [
         "error",
-        { name: "fetch", message: outside },
         { name: "XMLHttpRequest", message: outside },
         { name: "WebSocket", message: outside },
         { name: "EventSource", message: outside },
@@ -98,7 +108,6 @@ const eslintConfig = defineConfig([
         { name: "Function", message: "Don't run code from text." },
         { name: "globalThis", message: "Don't reach for globals." },
         { name: "global", message: "Don't reach for globals." },
-        { name: "process", message: "Settings and secrets are read only by Horizon's fixed files." },
         { name: "require", message: "Use import." },
       ],
       "no-restricted-imports": ["error", { paths: importPaths, patterns: importRules }],
